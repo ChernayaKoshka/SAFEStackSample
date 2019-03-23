@@ -1,0 +1,6 @@
+FSharp.Data
+group Server
+Saturn
+Microsoft.ApplicationInsights.AspNetCore
+WindowsAzure.Storage
+Thoth.Json.Giraffe
