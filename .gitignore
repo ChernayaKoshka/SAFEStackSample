@@ -17,3 +17,4 @@ deploy.bat
 .editorconfig
 deploy.zip
 paket.lock.bak
+src/Server/comments.csv
