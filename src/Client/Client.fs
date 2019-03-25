@@ -257,9 +257,10 @@ let infoBox model dispatch =
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div []
-        [ Navbar.navbar [ Navbar.Color IsPrimary ]
-              [ Navbar.Item.div []
-                    [ Heading.h2 [] [ str "How are you feeling?" ] ] ]
+        [
+          Hero.hero [ Hero.Color Color.IsPrimary; Hero.Props [ Style [ (CSSProp.MinHeight "55px") ] ]] [
+                Heading.h2 [ Heading.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered)]; Heading.Props [ Style [ CSSProp.Color "#363636";  ] ] ] [ str "How are you feeling?" ]
+               ]
 
           Column.column [ Column.Width(Screen.All, Column.Is4)
                           Column.Offset(Screen.All, Column.Is4) ]
