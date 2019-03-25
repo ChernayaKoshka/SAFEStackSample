@@ -139,7 +139,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         { currentModel with IsLoading = false
                             CurrentMsg = (infoMsg response) },
         Cmd.ofMsg GetComments
-    | ClearNotification -> {currentModel with CurrentMsg = None}, Cmd.none
+    | ClearNotification -> { currentModel with CurrentMsg = None }, Cmd.none
     | _ -> currentModel, Cmd.none
 
 let safeComponents =
@@ -222,45 +222,50 @@ let loadingLevel _ _ =
                           Fa.Size Fa.Fa4x ] [] ] ]
 
 let commentsBox model dispatch =
-    Box.box' [] (match model.Comments with
-                 | Some comments ->
-                     [ Table.table [ Table.IsFullWidth ]
-                           [ thead [] [ tr [] [ th [] [ str "Author" ]
-                                                th [] [ str "Mood" ]
-                                                th [] [ str "Comment" ] ] ]
+    Box.box' [ GenericOption.Props [ Style [ CSSProp.Overflow "auto" ] ] ]
+        (match model.Comments with
+         | Some comments ->
+             [ Table.table [ Table.IsFullWidth ]
+                   [ thead [] [ tr [] [ th [] [ str "Mood" ]
+                                        th [] [ str "Author" ]
+                                        th [] [ str "Comment" ] ] ]
 
-                             tbody []
-                                 [ for comment in comments ->
-                                       tr [ Style [ WordBreak "break-word" ] ]
-                                           [ td []
-                                                 [ Fa.span
-                                                       [ moodIcon
-                                                             comment.Mood.Value
+                     tbody []
+                         [ for comment in comments ->
+                               tr [ Style [ WordBreak "break-word" ] ]
+                                   [ td []
+                                         [ Fa.span
+                                               [ moodIcon comment.Mood.Value
+                                                 Fa.IconOption.Size Fa.Fa2x ] [] ]
+                                     td [] [ str comment.Author ]
+                                     td [] [ str comment.CommentText ] ] ] ]
 
-                                                         Fa.IconOption.Size
-                                                             Fa.Fa2x ] [] ]
-                                             td [] [ str comment.Author ]
-                                             td [] [ str comment.CommentText ] ] ] ]
-
-                       control
-                           (button "Refresh Comments" false
-                                (fun _ -> GetComments |> dispatch)) ]
-                 | None -> [ loadingLevel model dispatch ])
+               control
+                   (button "Refresh Comments" false
+                        (fun _ -> GetComments |> dispatch)) ]
+         | None -> [ loadingLevel model dispatch ])
 
 let infoBox model dispatch =
     match model.CurrentMsg with
     | None -> div [] []
     | Some(msg, color) ->
-        Notification.notification [ Notification.Color color ] [
-            Notification.delete [ Props [ OnClick (fun _ -> dispatch ClearNotification) ] ] [ ]
-            str msg ]
+        Notification.notification [ Notification.Color color ] [ Notification.delete
+                                                                     [ Props
+                                                                           [ OnClick
+                                                                                 (fun _ ->
+                                                                                 dispatch
+                                                                                     ClearNotification) ] ]
+                                                                     []
+                                                                 str msg ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div []
-        [
-          Hero.hero [ Hero.Color Color.IsPrimary; Hero.Props [ Style [ (CSSProp.MinHeight "55px") ] ]] [
-                Heading.h2 [ Heading.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered)]; Heading.Props [ Style [ CSSProp.Color "#363636";  ] ] ] [ str "How are you feeling?" ]
-               ]
+        [ Heading.h2
+              [ Heading.Props [ Class
+                                    "title is-2 hero is-primary has-text-centered"
+                                Style [ CSSProp.Color "#363636"
+                                        CSSProp.PaddingBottom ".3em" ] ] ]
+              [ str "How are you feeling?" ]
 
           Column.column [ Column.Width(Screen.All, Column.Is4)
                           Column.Offset(Screen.All, Column.Is4) ]
