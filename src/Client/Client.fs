@@ -12,6 +12,8 @@ open Fable.PowerPack
 open Fulma
 open Shared
 open Thoth.Json
+open Fable.FontAwesome
+open Shared
 
 module Cmd =
     /// Takes a promise that returns a result and will take the corresponding path
@@ -46,6 +48,13 @@ type Msg =
     | GetComments
     | GotComments of Result<Comment list, string>
     | SetMood of Mood
+    | ClearNotification
+
+let moodColor mood =
+    match mood with
+    | Good -> IsSuccess
+    | SoSo -> IsWarning
+    | Poor -> IsDanger
 
 let errorMsg msg = (msg, IsWarning) |> Some
 let infoMsg msg = (msg, IsInfo) |> Some
@@ -92,16 +101,13 @@ let getComments() =
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
     | GetComments ->
-        { currentModel with IsLoading = true },
+        { currentModel with Comments = None },
         Cmd.ofPromise getComments () GotComments ErrorMsg
     | GotComments result ->
         match result with
         | Ok comments ->
-            { currentModel with IsLoading = false
-                                Comments = Some comments }, Cmd.none
-        | Error e ->
-            { currentModel with IsLoading = false
-                                CurrentMsg = errorMsg e }, Cmd.none
+            { currentModel with Comments = Some comments }, Cmd.none
+        | Error e -> { currentModel with CurrentMsg = errorMsg e }, Cmd.none
     | ErrorMsg e ->
         { currentModel with IsLoading = false
                             CurrentMsg = (sprintf "%A" e |> errorMsg) },
@@ -133,6 +139,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         { currentModel with IsLoading = false
                             CurrentMsg = (infoMsg response) },
         Cmd.ofMsg GetComments
+    | ClearNotification -> {currentModel with CurrentMsg = None}, Cmd.none
     | _ -> currentModel, Cmd.none
 
 let safeComponents =
@@ -149,8 +156,8 @@ let safeComponents =
            str " powered by: "
            components ]
 
-let button model txt onClick =
-    Button.button [ Button.IsLoading model.IsLoading
+let button txt isLoading onClick =
+    Button.button [ Button.IsLoading isLoading
                     Button.IsFullWidth
                     Button.Color IsPrimary
                     Button.OnClick onClick ] [ str txt ]
@@ -163,15 +170,11 @@ let onChange action = OnChange(fun e -> action !!e.target?value)
 let field input = Field.div [] [ Field.body [] [ input ] ]
 let control input = Field.div [] [ input ]
 
-let moodColor (model : Model) (mood : Mood) =
+let commentMoodColor (model : Model) (mood : Mood) =
     match model.Comment.Mood with
     | None -> IsWhite
     | Some s when s <> mood -> IsWhite
-    | _ ->
-        match mood with
-        | Good -> IsSuccess
-        | SoSo -> IsWarning
-        | Poor -> IsDanger
+    | _ -> moodColor mood
 
 let moodIcon =
     function
@@ -182,7 +185,7 @@ let moodIcon =
 let moods (model : Model) dispatch =
     let item score =
         Level.item []
-            [ Button.a [ Button.Color(moodColor model score)
+            [ Button.a [ Button.Color(commentMoodColor model score)
                          Button.OnClick(fun _ -> dispatch (SetMood score)) ]
                   [ Fa.span [ moodIcon score
                               Fa.IconOption.Size Fa.Fa2x ] [] ] ]
@@ -206,32 +209,51 @@ let formBox model dispatch =
         [ control (moods model dispatch)
           field (author model dispatch)
           field (comment model dispatch)
-          control (button model "Submit!" (fun _ -> SubmitForm |> dispatch)) ]
+
+          control
+              (button "Submit!" model.IsLoading
+                   (fun _ -> SubmitForm |> dispatch)) ]
+
+let loadingLevel _ _ =
+    Level.level []
+        [ Level.item [ Level.Item.HasTextCentered ]
+              [ Fa.span [ Fa.Regular.Hourglass
+                          Fa.Spin
+                          Fa.Size Fa.Fa4x ] [] ] ]
 
 let commentsBox model dispatch =
-    match model.Comments with
-    | Some comments ->
-        Box.box' []
-            [ Table.table [ Table.IsFullWidth ]
-                  [ thead [] [ tr [] [ th [] [ str "Author" ]
-                                       th [] [ str "Comment" ] ] ]
+    Box.box' [] (match model.Comments with
+                 | Some comments ->
+                     [ Table.table [ Table.IsFullWidth ]
+                           [ thead [] [ tr [] [ th [] [ str "Author" ]
+                                                th [] [ str "Mood" ]
+                                                th [] [ str "Comment" ] ] ]
 
-                    tbody []
-                        [ for comment in comments ->
-                              tr [ Style [ WordBreak "break-word" ] ]
-                                  [ td [] [ str comment.Author ]
-                                    td [] [ str comment.CommentText ] ] ] ]
+                             tbody []
+                                 [ for comment in comments ->
+                                       tr [ Style [ WordBreak "break-word" ] ]
+                                           [ td []
+                                                 [ Fa.span
+                                                       [ moodIcon
+                                                             comment.Mood.Value
 
-              control
-                  (button model "Refresh Comments"
-                       (fun _ -> GetComments |> dispatch)) ]
-    | None -> div [] []
+                                                         Fa.IconOption.Size
+                                                             Fa.Fa2x ] [] ]
+                                             td [] [ str comment.Author ]
+                                             td [] [ str comment.CommentText ] ] ] ]
 
-let infoBox model _ =
+                       control
+                           (button "Refresh Comments" false
+                                (fun _ -> GetComments |> dispatch)) ]
+                 | None -> [ loadingLevel model dispatch ])
+
+let infoBox model dispatch =
     match model.CurrentMsg with
     | None -> div [] []
     | Some(msg, color) ->
-        Notification.notification [ Notification.Color color ] [ str msg ]
+        Notification.notification [ Notification.Color color ] [
+            Notification.delete [ Props [ OnClick (fun _ -> dispatch ClearNotification) ] ] [ ]
+            str msg ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div []
